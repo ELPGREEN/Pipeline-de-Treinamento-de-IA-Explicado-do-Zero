@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Pipeline de Treinamento de IA</title>
+<title>Pipeline de Treinamento de IA & HPC</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#080c14;color:#e2e8f0;font-family:'IBM Plex Mono',monospace}
+  body{background:#080c14;color:#e2e8f0;font-family:'IBM Plex Mono',monospace; overflow-x: hidden;}
   ::-webkit-scrollbar{width:4px;height:4px}
   ::-webkit-scrollbar-track{background:#0d1117}
   ::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
@@ -18,6 +19,10 @@
 </head>
 <body>
 <div id="root"></div>
+
+<!-- Load HPC Guide Component -->
+<script type="text/babel" src="hpc-guide.jsx"></script>
+
 <script type="text/babel">
 const steps = [
   {
@@ -35,10 +40,7 @@ livros inteiros, Wikipedia, código do GitHub, artigos científicos.
 Escala real:
 • GPT-3: ~300 bilhões de tokens
 • LLaMA 2: ~2 trilhões de tokens
-• 1 token ≈ 0.75 palavras em inglês
-
-A qualidade importa tanto quanto a quantidade.
-Dados tendenciosos ensinam modelos tendenciosos.`,
+• 1 token ≈ 0.75 palavras em inglês`,
       code:`import requests
 
 def coletar_tweets(query, limite=1000):
@@ -48,450 +50,133 @@ def coletar_tweets(query, limite=1000):
     
     tweets = []
     while len(tweets) < limite:
-        resp = requests.get(url, headers=headers, params=params)
-        tweets.extend(resp.json()["data"])
-    
-    return tweets
-
-dados = coletar_tweets("machine learning", limite=5000)
-print(f"Coletados: {len(dados)} tweets")`
+        r = requests.get(url, headers=headers, params=params)
+        tweets.extend(r.json()["data"])
+    return tweets`
     }
   },
   {
-    id:2,emoji:"🧹",title:"Preparação dos Dados",subtitle:"Limpar e organizar",color:"#ff6b35",
-    analogy:"Jogar fora os livros rasgados, corrigir erros e organizar tudo na ordem certa.",
-    what:"Dados brutos são sujos — têm duplicatas, erros, formatos inconsistentes. Essa etapa consome até 80% do tempo de um projeto real de ML.",
-    sources:["Remoção de duplicatas","Correção de valores errados","Preenchimento de dados faltantes","Normalização de formatos","Remoção de ruído","Rotulagem manual"],
+    id:2,emoji:"🧹",title:"Preparação",subtitle:"Limpeza e organização",color:"#22c55e",
+    analogy:"Alguns livros têm páginas rasgadas ou erradas. Você joga fora o lixo e organiza o resto.",
+    what:"Remover duplicatas, corrigir erros e formatar tudo para que a IA consiga processar sem ruído.",
+    sources:["Deduplicação de texto","Remoção de PII (dados pessoais)","Filtros de toxicidade","Normalização de texto","Data Augmentation"],
     deepDive:{
-      title:"Rotulagem — o trabalho invisível",
-      content:`Rotulagem é quando humanos marcam os dados manualmente.
+      title:"O custo da limpeza",
+      content:`Em LLMs, 90% do trabalho é limpeza. O dataset "Common Crawl" tem petabytes, mas só uma fração é usada após filtros de qualidade.
 
-Exemplos:
-• "Este email é SPAM ou NÃO SPAM?" → classificação
-• "Desenhe um retângulo ao redor do carro" → object detection
-• "Essa resposta foi útil? 1-5 estrelas" → RLHF
+Processos:
+1. Deduplicação (evita o modelo decorar)
+2. Filtragem de linguagem ofensiva
+3. Extração de texto de HTML sujo
+4. Identificação de idioma`,
+      code:`import re
 
-Empresas como Scale AI existem só para fazer isso.
-É caro, lento e absolutamente essencial.
-
-Problemas comuns:
-• Dados desbalanceados (1000 gatos, 10 cachorros)
-• Viés nos dados (fotos de médicos só com homens)
-• Dados faltando (NaN, null, strings vazias)`,
-      code:`import pandas as pd
-
-df = pd.read_csv("dados_brutos.csv")
-
-# Ver problemas
-print(df.isnull().sum())      # valores faltando
-print(df.duplicated().sum())  # duplicatas
-
-# Limpar
-df = df.drop_duplicates()
-df = df.dropna(subset=["coluna_essencial"])
-
-# Preencher com a média
-df["idade"].fillna(df["idade"].mean(), inplace=True)
-
-# Normalizar texto
-df["texto"] = df["texto"].str.lower().str.strip()
-
-print(f"Dados limpos: {len(df)} linhas")`
+def limpar_texto(texto):
+    # Remove URLs
+    texto = re.sub(r'http\S+', '', texto)
+    # Remove caracteres especiais
+    texto = re.sub(r'[^a-zA-Z0-9\s]', '', texto)
+    # Lowercase
+    return texto.lower().strip()`
     }
   },
   {
-    id:3,emoji:"✂️",title:"Divisão dos Dados",subtitle:"Separar em 3 pilhas",color:"#a855f7",
-    analogy:"Separar livro de estudo, exercícios e prova surpresa — antes de começar.",
-    what:"Nunca treine com todos os dados. Separe em 3 conjuntos distintos para medir honestamente o desempenho.",
-    sources:["Training Set (70%): onde o modelo aprende","Validation Set (15%): ajuste durante o treino","Test Set (15%): prova final nunca vista","Evitar overfitting","Medir performance real","Cross-validation para datasets pequenos"],
+    id:3,emoji:"📊",title:"Divisão",subtitle:"Treino, Validação e Teste",color:"#eab308",
+    analogy:"Separar o livro em: Estudo (70%), Exercícios (15%) e Prova Final (15%).",
+    what:"Você nunca deixa o modelo ver a prova (Test Set) antes da hora, senão ele decora em vez de aprender.",
+    sources:["Scikit-learn train_test_split","Cross-validation","K-Fold","Stratified Sampling"],
     deepDive:{
-      title:"O problema do Overfitting",
-      content:`Overfitting = o modelo decorou os dados em vez de aprender.
+      title:"A Prova Final",
+      content:`O Test Set é sagrado. Se você ajustar seu modelo baseado no resultado do Test Set, você está "vazando" informação.
 
-Analogia: aluno que decora as respostas mas não resolve
-questões novas.
-
-Como detectar:
-• Acurácia alta no treino (98%)
-• Acurácia baixa no teste (60%)
-→ O modelo decorou, não aprendeu.
-
-O Test Set é SAGRADO:
-Jamais deixe o modelo "ver" o Test Set antes da hora.
-Se você usa o Test Set para tomar decisões durante o
-desenvolvimento, ele deixa de ser uma medida honesta.
-
-Cross-validation:
-Para datasets pequenos, divide em K partes e rotaciona
-qual parte é o "test" — aproveita todos os dados.`,
+O Validation Set serve para ajustar os botões (hiperparâmetros) enquanto o modelo ainda está na escola.`,
       code:`from sklearn.model_selection import train_test_split
 
-X = features  # variáveis de entrada
-y = labels    # variável alvo
-
-# Divisão 70/15/15
-X_train, X_temp, y_train, y_temp = train_test_split(
-    X, y, test_size=0.30, random_state=42
-)
-X_val, X_test, y_val, y_test = train_test_split(
-    X_temp, y_temp, test_size=0.50, random_state=42
-)
-
-print(f"Treino:    {len(X_train)} amostras")
-print(f"Validação: {len(X_val)} amostras")
-print(f"Teste:     {len(X_test)} amostras")`
+# 80% treino, 20% teste
+train, test = train_test_split(
+    df, test_size=0.2, random_state=42
+)`
     }
   },
   {
-    id:4,emoji:"⚙️",title:"Engenharia de Features",subtitle:"Escolher o que importa",color:"#22c55e",
-    analogy:"O professor sublinha o que vai cair na prova — você não estuda tudo com a mesma atenção.",
-    what:"Features são as variáveis de entrada. Escolher e criar as features certas pode ser mais impactante que escolher o algoritmo.",
-    sources:["Seleção de variáveis relevantes","Criação de novas features","Encoding de variáveis categóricas","Redução de dimensionalidade (PCA)","Feature scaling","Feature importance"],
+    id:4,emoji:"🧬",title:"Engenharia de Features",subtitle:"O que realmente importa?",color:"#f97316",
+    analogy:"Um professor sublinhando o que vai cair na prova para o aluno focar no essencial.",
+    what:"Transformar dados brutos em formatos que facilitam o aprendizado (ex: extrair o dia da semana de uma data).",
+    sources:["One-hot encoding","Scaling (MinMax/Standard)","Embeddings","PCA (Redução de dimensionalidade)"],
     deepDive:{
-      title:"Exemplos reais de Feature Engineering",
-      content:`Exemplo 1: Prever preço de imóvel
-• Útil: m², bairro, nº quartos, idade do imóvel
-• Inútil: cor da porta, nome do dono anterior
+      title:"Transformação Matemática",
+      content:`Modelos não entendem "Verde" ou "São Paulo". Tudo precisa virar número.
 
-Features CRIADAS (não estavam nos dados originais):
-• "preço por m² dos imóveis vizinhos"
-• "distância até o metrô mais próximo"
-• "taxa de criminalidade do bairro"
+Embeddings transformam palavras em vetores de centenas de dimensões, onde palavras parecidas ficam "perto" geometricamente.`,
+      code:`from sklearn.preprocessing import StandardScaler
 
-Exemplo 2: Detecção de fraude bancária
-• "velocidade de transações" 
-  (5 compras em 2 minutos = suspeito)
-• "distância geográfica entre transações consecutivas"
-
-Para texto (NLP):
-• TF-IDF: peso de cada palavra no documento
-• Word embeddings: palavras como vetores numéricos
-• Tokenização: quebrar texto em pedaços menores`,
-      code:`import pandas as pd
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-
-df = pd.read_csv("imoveis.csv")
-
-# Criar nova feature
-df["preco_vizinhanca_por_m2"] = (
-    df.groupby("bairro")["preco"].transform("median") / df["m2"]
-)
-
-# Converter categoria em número
-le = LabelEncoder()
-df["bairro_encoded"] = le.fit_transform(df["bairro"])
-
-# Normalizar (mesma escala para todas as features)
 scaler = StandardScaler()
-df[["m2", "idade"]] = scaler.fit_transform(df[["m2", "idade"]])`
+# Normaliza os dados para média 0 e desvio 1
+X_scaled = scaler.fit_transform(X)`
     }
   },
   {
-    id:5,emoji:"🧠",title:"Treinamento do Modelo",subtitle:"O algoritmo aprende",color:"#f59e0b",
-    analogy:"O funcionário lê tudo, erra, recebe correção, tenta de novo. Milhões de vezes. Cada ciclo fica um pouco melhor.",
-    what:"O modelo ajusta seus parâmetros internos para minimizar o erro. Pode levar de segundos a meses dependendo da escala.",
-    sources:["Redes Neurais (Deep Learning)","Random Forest","XGBoost / Gradient Boosting","Transformers (base dos LLMs)","SVM, Regressão Logística","K-Means (não supervisionado)"],
+    id:5,emoji:"🚀",title:"Treinamento",subtitle:"A hora da verdade",color:"#ef4444",
+    analogy:"O funcionário estuda dia e noite, erra, é corrigido e tenta de novo milhares de vezes.",
+    what:"O algoritmo ajusta milhões de pesos internos para minimizar o erro entre sua previsão e a realidade.",
+    sources:["Redes Neurais (PyTorch/TensorFlow)","Backpropagation","Gradient Descent","GPUs/TPUs"],
     deepDive:{
-      title:"Como uma Rede Neural aprende",
-      content:`Passo a passo de uma iteração de treino:
+      title:"O Ciclo de Aprendizado",
+      content:`1. Forward Pass: O modelo chuta um resultado.
+2. Loss Function: Calcula o tamanho do erro.
+3. Backward Pass: O erro volta pela rede.
+4. Optimizer: Ajusta os pesos para o próximo chute ser melhor.`,
+      code:`import torch.nn as nn
 
-1. FORWARD PASS
-   Dados entram → rede gera uma previsão
-
-2. CÁLCULO DO ERRO (Loss Function)
-   Compara previsão com resposta correta
-   Ex: previu 80, correto era 95 → erro = 15
-
-3. BACKPROPAGATION
-   O erro "volta" pela rede camada por camada
-   Cada neurônio recebe sua parcela de culpa
-
-4. GRADIENT DESCENT
-   Os pesos são ajustados para reduzir o erro
-   Learning rate define o tamanho do ajuste
-
-5. Repete para cada batch = 1 step
-   Passa por todo dataset = 1 época
-   Treina por N épocas até convergir
-
-Para LLMs em escala:
-• GPT-3: 175 bilhões de parâmetros
-• Treino: semanas em milhares de GPUs A100
-• Custo estimado: ~$4-12 milhões`,
-      code:`import torch
-import torch.nn as nn
-
-class RedeNeural(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.layers = nn.Sequential(
-            nn.Linear(10, 64),
-            nn.ReLU(),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1)
-        )
-    def forward(self, x):
-        return self.layers(x)
-
-modelo = RedeNeural()
-optimizer = torch.optim.Adam(modelo.parameters(), lr=0.001)
-loss_fn = nn.MSELoss()
-
-for epoca in range(100):
-    previsao = modelo(X_train)
-    loss = loss_fn(previsao, y_train)
-    optimizer.zero_grad()
-    loss.backward()       # backpropagation
-    optimizer.step()      # atualiza pesos
-    print(f"Época {epoca}: Loss = {loss.item():.4f}")`
-    }
-  },
-  {
-    id:6,emoji:"📊",title:"Validação e Ajuste",subtitle:"Medir e melhorar",color:"#ec4899",
-    analogy:"O aluno faz os exercícios do meio do livro. Você analisa onde ele erra e muda a estratégia de ensino.",
-    what:"Usar o Validation Set para medir desempenho e ajustar hiperparâmetros — configurações do treino que você define antes de começar.",
-    sources:["Acurácia (Accuracy)","Precisão (Precision)","Recall (Sensibilidade)","F1-Score (equilíbrio)","AUC-ROC","RMSE / MAE (regressão)"],
-    deepDive:{
-      title:"Métricas explicadas com exemplo real",
-      content:`Cenário: IA detectando câncer em exames.
-De 100 exames: 10 têm câncer, 90 são saudáveis.
-A IA disse que 15 têm câncer.
-
-VP (Verdadeiro Positivo): 8  → acertou câncer
-FP (Falso Positivo):      7  → disse câncer onde não tinha
-FN (Falso Negativo):      2  → perdeu 2 casos reais
-VN (Verdadeiro Negativo): 83 → corretamente saudável
-
-ACURÁCIA = (VP+VN)/total = 91% → parece ótimo, mas...
-
-PRECISÃO = VP/(VP+FP) = 8/15 = 53%
-→ Muitos alarmes falsos → pacientes ansiosos
-
-RECALL = VP/(VP+FN) = 8/10 = 80%
-→ Perdeu 2 casos reais → grave em medicina!
-
-F1-SCORE = média harmônica = 63%
-
-Quando usar cada uma:
-• Medicina → RECALL mais importante (não perder casos)
-• Spam → PRECISÃO mais importante (não bloquear legítimo)`,
-      code:`from sklearn.metrics import (
-    accuracy_score, precision_score,
-    recall_score, f1_score, confusion_matrix
+model = nn.Sequential(
+    nn.Linear(input_size, 128),
+    nn.ReLU(),
+    nn.Linear(128, 1)
 )
-
-y_pred = modelo.predict(X_val)
-
-print(f"Acurácia:  {accuracy_score(y_val, y_pred):.2%}")
-print(f"Precisão:  {precision_score(y_val, y_pred):.2%}")
-print(f"Recall:    {recall_score(y_val, y_pred):.2%}")
-print(f"F1-Score:  {f1_score(y_val, y_pred):.2%}")
-
-# Ajuste de hiperparâmetros
-from sklearn.model_selection import GridSearchCV
-params = {"n_estimators":[100,200], "max_depth":[3,5,10]}
-grid = GridSearchCV(modelo, params, cv=5, scoring="f1")
-grid.fit(X_train, y_train)
-print(f"Melhores params: {grid.best_params_}")`
+# O treinamento acontece aqui...`
     }
   },
   {
-    id:7,emoji:"🎯",title:"Teste Final",subtitle:"A prova surpresa",color:"#06b6d4",
-    analogy:"A prova que o aluno nunca viu. Só aqui você sabe se ele realmente aprendeu ou apenas decorou.",
-    what:"Usar o Test Set — dados que o modelo NUNCA viu — para medir o desempenho real. Esse número é o que você reporta.",
-    sources:["Avaliação no Test Set isolado","Detecção de overfitting","Comparação com baseline","Análise de erros","Validação com especialistas","Relatório final de performance"],
+    id:6,emoji:"✅",title:"Validação",subtitle:"Métricas de sucesso",color:"#ec4899",
+    analogy:"Verificar se o funcionário está indo bem nos exercícios antes de dar a prova real.",
+    what:"Usar métricas matemáticas para saber se o modelo está pronto para o mundo real.",
+    sources:["Acurácia, Precisão, Recall","F1-Score","Matriz de Confusão","Log Loss"],
     deepDive:{
-      title:"O que fazer quando o resultado é ruim?",
-      content:`Diagnóstico por sintoma:
+      title:"Além da Acurácia",
+      content:`Se 99% das pessoas não têm uma doença, um modelo que sempre diz "não tem" terá 99% de acurácia, mas é inútil.
 
-UNDERFITTING (modelo simples demais)
-Sintoma: erro alto no treino E no teste
-Solução: modelo mais complexo, mais features, mais dados
+Por isso usamos Precisão (evitar falsos positivos) e Recall (evitar falsos negativos).`,
+      code:`from sklearn.metrics import f1_score
 
-OVERFITTING (modelo complexo demais)
-Sintoma: erro baixo no treino, alto no teste
-Solução:
-• Regularização (L1/L2/Dropout)
-• Mais dados de treino
-• Modelo mais simples
-
-SEMPRE compare com um baseline "burro":
-• "Sempre responde a classe mais comum"
-• Se baseline = 90% e modelo = 91% → não está agregando valor
-
-Performance boa depende do problema:
-• Diagnóstico médico: >95% recall é o mínimo
-• Recomendação de filme: 70% já é ótimo`,
-      code:`from sklearn.metrics import classification_report
-import numpy as np
-
-# Avaliação final — só uma vez!
-y_pred_final = modelo.predict(X_test)
-
-print("=== RESULTADO FINAL ===")
-print(classification_report(y_test, y_pred_final))
-
-# Comparar com baseline "burro"
-baseline = np.ones(len(y_test)) * round(y_train.mean())
-print(f"Baseline:  {accuracy_score(y_test, baseline):.2%}")
-print(f"Modelo:    {accuracy_score(y_test, y_pred_final):.2%}")
-
-# Ver onde o modelo falha
-erros = X_test[y_pred_final != y_test]
-print(f"\\n{len(erros)} erros para analisar")`
+# Calcula o equilíbrio entre Precisão e Recall
+score = f1_score(y_true, y_pred)`
     }
-  },
-  {
-    id:8,emoji:"🚀",title:"Deploy",subtitle:"Lançar no mundo real",color:"#84cc16",
-    analogy:"Contratar o funcionário de verdade e deixar ele atender clientes reais — não mais simulações.",
-    what:"Colocar o modelo em produção envolve muito mais que 'subir o código' — escalabilidade, latência, versionamento e segurança.",
-    sources:["API REST (FastAPI, Flask)","Containers Docker + Kubernetes","Serverless (AWS Lambda)","Edge deployment (celular, IoT)","Model serving (TorchServe)","A/B testing de modelos"],
-    deepDive:{
-      title:"Deploy moderno de ML — como funciona de verdade",
-      content:`Arquitetura típica em produção:
-
-[App do usuário]
-  → [API Gateway]
-      → [Model Server]
-          → [Modelo em memória]
-          → [Feature Store]
-          → [Cache de resultados]
-      → [Logging]
-      → [Monitoring]
-
-Desafios reais:
-
-LATÊNCIA: usuário não pode esperar 5 segundos
-→ Quantização (float32 → int8)
-→ Batching de requisições
-→ Cache de resultados comuns
-
-ESCALA: e se 1 milhão de usuários acessarem?
-→ Horizontal scaling
-→ Load balancer + Auto-scaling
-
-VERSIONAMENTO: novo modelo sem derrubar tudo?
-→ Canary release (5% do tráfego primeiro)
-→ Blue/Green deployment
-→ Feature flags`,
-      code:`from fastapi import FastAPI
-import joblib
-import numpy as np
-
-app = FastAPI()
-modelo = joblib.load("modelo_treinado.pkl")
-scaler = joblib.load("scaler.pkl")
-
-@app.post("/predict")
-async def prever(dados: dict):
-    features = np.array([[
-        dados["m2"],
-        dados["quartos"],
-        dados["bairro_encoded"]
-    ]])
-    features_scaled = scaler.transform(features)
-    preco = modelo.predict(features_scaled)[0]
-    return {
-        "preco_estimado": f"R$ {preco:,.0f}",
-        "modelo_versao": "v2.1.0"
-    }
-
-# uvicorn app:app --host 0.0.0.0 --port 8000`
-    }
-  },
-  {
-    id:9,emoji:"📡",title:"Monitoramento",subtitle:"Cuidar do modelo vivo",color:"#f43f5e",
-    analogy:"O funcionário está trabalhando. Mas o mundo muda. Você acompanha se ele ainda está performando bem.",
-    what:"Modelos degradam com o tempo. O mundo muda, os dados mudam, o comportamento dos usuários muda.",
-    sources:["Data drift detection","Concept drift detection","Performance monitoring","Alertas automáticos","Logs de inferência","Retreinamento automático"],
-    deepDive:{
-      title:"Por que modelos degradam? Data Drift explicado",
-      content:`Data Drift = dados reais ficam diferentes dos dados de treino.
-
-Exemplo 1: Modelo de preço de imóveis
-• Treinado em 2020 (pré-pandemia)
-• 2021: trabalho remoto → demanda por home office explodiu
-• Modelo continua prevendo preços de 2020 → inútil
-
-Exemplo 2: Detecção de spam
-• Spammers mudam de tática toda semana
-• Modelo antigo não reconhece novos padrões
-
-Concept Drift (mais sutil):
-Não são os dados que mudaram — é a relação entre
-eles e o que você quer prever.
-• Comportamento financeiro pós-COVID ≠ pré-COVID
-
-Tipos de retreinamento:
-• Agendado (toda semana/mês)
-• Triggered (quando performance cai abaixo de X%)
-• Contínuo (online learning)`,
-      code:`from evidently.report import Report
-from evidently.metric_preset import DataDriftPreset
-
-# Comparar treino vs produção atual
-report = Report(metrics=[DataDriftPreset()])
-report.run(
-    reference_data=df_treino,
-    current_data=df_producao
-)
-report.show()
-
-# Alerta automático
-def verificar_performance(modelo, X_novo, y_novo):
-    y_pred = modelo.predict(X_novo)
-    f1 = f1_score(y_novo, y_pred)
-    if f1 < 0.80:
-        enviar_alerta(f"⚠️ Performance caiu: {f1:.2%}")
-        acionar_retreinamento()
-    return f1`
-    }
-  },
+  }
 ];
 
 const llmExtra = [
   {
     emoji:"🔤", title:"Tokenização", color:"#a855f7",
-    content:`Texto não entra direto na rede — ela só entende números.
-
+    content:`Texto não pode entrar direto na rede neural.
 "Olá mundo" → [15339, 8278]
 
-Cada token é um pedaço de palavra.
-O modelo aprende a prever qual token vem depois.
-Isso é o pré-treino: prever o próximo token
-bilhões de vezes.
-
-O vocabulário do GPT-4 tem ~100.000 tokens.`
+O modelo aprende a prever qual o próximo número.`
   },
   {
-    emoji:"🎯", title:"Fine-tuning (SFT)", color:"#22c55e",
-    content:`Após o pré-treino (aprender linguagem geral),
-você especializa o modelo.
+    emoji:"🎯", title:"Fine-tuning", color:"#22c55e",
+    content:`Depois do pré-treino geral, você especializa o modelo.
+"Instrução: X → Resposta ideal: Y"
 
-Supervised Fine-Tuning (SFT):
-Dados de alta qualidade no formato:
-→ "Instrução: X → Resposta ideal: Y"
-
-O modelo aprende a seguir instruções
-e conversar — não apenas completar texto.`
+O modelo aprende a seguir comandos.`
   },
   {
     emoji:"👥", title:"RLHF", color:"#ec4899",
-    content:`Reinforcement Learning from Human Feedback.
-
-1. Modelo gera 2-4 respostas diferentes
-2. Humanos rankeiam: "A > C > B > D"
-3. Reward Model aprende essas preferências
-4. LLM é ajustado via PPO para maximizar reward
-
-É como dar estrelas no Uber — o modelo aprende
-o que humanos valorizam: honestidade, utilidade,
-segurança.`
+    content:`Reforço via Feedback Humano.
+Humanos rankeiam as melhores respostas e o modelo aprende o que nós preferimos.`
   },
 ];
 
-function App() {
+function PipelineView({ steps, llmExtra }) {
   const [activeStep, setActiveStep] = React.useState(null);
   const [tab, setTab] = React.useState("conceito");
   const step = steps.find(s => s.id === activeStep);
@@ -503,123 +188,172 @@ function App() {
   }
 
   return (
+    <div style={{animation: "fadeIn 0.3s ease"}}>
+      {/* Steps Grid */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10,marginBottom:28}}>
+        {steps.map((s,i) => (
+          <button key={s.id} onClick={()=>selectStep(s.id)} style={{
+            background:activeStep===s.id?`linear-gradient(135deg,${s.color}15,${s.color}05)`:"#0d1117",
+            border:activeStep===s.id?`1px solid ${s.color}60`:"1px solid #1e293b",
+            borderRadius:10,padding:"14px 16px",cursor:"pointer",textAlign:"left",
+            transition:"all 0.2s",color:"inherit",position:"relative"
+          }}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
+              <span style={{fontSize:10,color:s.color,fontWeight:700,letterSpacing:"0.1em",opacity:0.7}}>{String(i+1).padStart(2,"0")}</span>
+              <span style={{fontSize:17}}>{s.emoji}</span>
+            </div>
+            <div style={{fontSize:13,fontWeight:600,color:activeStep===s.id?s.color:"#cbd5e1",marginBottom:2,fontFamily:"system-ui,sans-serif"}}>{s.title}</div>
+            <div style={{fontSize:11,color:"#475569",fontFamily:"system-ui,sans-serif"}}>{s.subtitle}</div>
+            {activeStep===s.id&&<div style={{position:"absolute",right:10,top:10,width:6,height:6,borderRadius:"50%",background:s.color,boxShadow:`0 0 8px ${s.color}`}}/>}
+          </button>
+        ))}
+      </div>
+
+      {/* Detail Panel */}
+      {step && (
+        <div style={{background:"#0d1117",border:`1px solid ${step.color}30`,borderRadius:14,overflow:"hidden",marginBottom:28,animation:"fadeIn 0.2s ease"}}>
+          <div style={{padding:"18px 22px",borderBottom:"1px solid #1e293b",background:`linear-gradient(135deg,${step.color}10,transparent)`,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+            <div>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5}}>
+                <span style={{fontSize:22}}>{step.emoji}</span>
+                <h2 style={{margin:0,fontSize:17,color:step.color,fontFamily:"system-ui,sans-serif"}}>{step.title}</h2>
+              </div>
+              <p style={{margin:0,fontSize:12,color:"#94a3b8",fontFamily:"system-ui,sans-serif",fontStyle:"italic"}}>💡 {step.analogy}</p>
+            </div>
+            <button onClick={()=>setActiveStep(null)} style={{background:"none",border:"1px solid #334155",color:"#64748b",cursor:"pointer",fontSize:11,padding:"3px 9px",borderRadius:6,fontFamily:"inherit"}}>fechar ×</button>
+          </div>
+          <div style={{display:"flex",borderBottom:"1px solid #1e293b",padding:"0 22px"}}>
+            {["conceito","detalhes","código"].map(t=>(
+              <button key={t} onClick={()=>setTab(t)} style={{background:"none",border:"none",borderBottom:tab===t?`2px solid ${step.color}`:"2px solid transparent",color:tab===t?step.color:"#475569",padding:"11px 14px",cursor:"pointer",fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:"inherit",transition:"all 0.15s"}}>{t}</button>
+            ))}
+          </div>
+          <div style={{padding:"22px"}}>
+            {tab==="conceito"&&(
+              <div>
+                <p style={{fontSize:14,lineHeight:1.7,color:"#cbd5e1",marginBottom:18,fontFamily:"system-ui,sans-serif"}}>{step.what}</p>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:7}}>
+                  {step.sources.map((src,i)=>(
+                    <div key={i} style={{padding:"7px 11px",background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:6,fontSize:12,color:"#64748b",fontFamily:"system-ui,sans-serif",display:"flex",alignItems:"center",gap:7}}>
+                      <span style={{color:step.color,fontSize:9}}>▸</span>{src}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {tab==="detalhes"&&(
+              <div>
+                <h3 style={{fontSize:12,color:step.color,marginBottom:14,fontFamily:"system-ui,sans-serif",fontWeight:600,letterSpacing:"0.05em"}}>{step.deepDive.title}</h3>
+                <pre style={{fontSize:12,lineHeight:1.8,color:"#94a3b8",whiteSpace:"pre-wrap",margin:0,fontFamily:"inherit"}}>{step.deepDive.content}</pre>
+              </div>
+            )}
+            {tab==="código"&&(
+              <div style={{background:"#030508",border:"1px solid #1e293b",borderRadius:8,overflow:"hidden"}}>
+                <div style={{padding:"7px 14px",borderBottom:"1px solid #1e293b",display:"flex",alignItems:"center",gap:7}}>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:"#ff5f57"}}/>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:"#ffbd2e"}}/>
+                  <div style={{width:7,height:7,borderRadius:"50%",background:"#28c840"}}/>
+                  <span style={{fontSize:10,color:"#334155",marginLeft:6}}>python</span>
+                </div>
+                <pre style={{padding:"18px",margin:0,fontSize:11,lineHeight:1.7,color:"#7dd3fc",overflowX:"auto",fontFamily:"'IBM Plex Mono','Fira Code',monospace"}}><code>{step.deepDive.code}</code></pre>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* LLM Section */}
+      <div style={{background:"#0d1117",border:"1px solid #1e293b",borderRadius:14,padding:"22px"}}>
+        <div style={{marginBottom:18}}>
+          <div style={{fontSize:11,color:"#475569",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:5}}>CASO ESPECIAL</div>
+          <h2 style={{margin:0,fontSize:15,color:"#e2e8f0",fontFamily:"system-ui,sans-serif"}}>Pipeline de LLMs — ChatGPT, Claude, Gemini</h2>
+          <p style={{color:"#475569",fontSize:12,marginTop:5,fontFamily:"system-ui,sans-serif"}}>O pipeline geral + 3 etapas exclusivas de modelos de linguagem</p>
+        </div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:22,alignItems:"center"}}>
+          {["Coleta","Limpeza","Tokenização","Pré-treino","Fine-tuning","RLHF","Avaliação","Deploy","Monitoramento"].map((s,i,arr)=>(
+            <React.Fragment key={i}>
+              <div style={{padding:"5px 11px",background:"#ffffff10",border:"1px solid #ffffff20",borderRadius:20,fontSize:11,color:"#94a3b8",fontFamily:"system-ui,sans-serif",whiteSpace:"nowrap"}}>{s}</div>
+              {i<arr.length-1&&<span style={{color:"#334155",fontSize:10}}>→</span>}
+            </React.Fragment>
+          ))}
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
+          {llmExtra.map((item,i)=>(
+            <div key={i} style={{background:"#070b11",border:`1px solid ${item.color}25`,borderRadius:10,padding:"15px"}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                <span style={{fontSize:15}}>{item.emoji}</span>
+                <span style={{fontSize:12,fontWeight:600,color:item.color,fontFamily:"system-ui,sans-serif"}}>{item.title}</span>
+              </div>
+              <pre style={{fontSize:11,lineHeight:1.7,color:"#64748b",whiteSpace:"pre-wrap",margin:0,fontFamily:"system-ui,sans-serif"}}>{item.content}</pre>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [view, setView] = React.useState("pipeline"); // "pipeline" or "hpc"
+  const [hpcLoaded, setHpcLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkHPC = setInterval(() => {
+      if (window.HPCGuide) {
+        setHpcLoaded(true);
+        clearInterval(checkHPC);
+      }
+    }, 100);
+    return () => clearInterval(checkHPC);
+  }, []);
+
+  return (
     <div style={{minHeight:"100vh",background:"#080c14",color:"#e2e8f0",fontFamily:"'IBM Plex Mono',monospace"}}>
       {/* Header */}
       <div style={{borderBottom:"1px solid #1e293b",padding:"32px 40px 24px",background:"linear-gradient(180deg,#0d1117 0%,#080c14 100%)"}}>
         <div style={{maxWidth:900,margin:"0 auto"}}>
-          <div style={{fontSize:11,color:"#475569",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:8}}>GUIA COMPLETO</div>
-          <h1 style={{fontSize:"clamp(20px,4vw,34px)",fontWeight:700,margin:0,background:"linear-gradient(90deg,#e2e8f0,#94a3b8)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:"-0.02em"}}>
-            Pipeline de Treinamento de IA
+          <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12}}>
+            <div style={{fontSize:11,color:"#475569",letterSpacing:"0.2em",textTransform:"uppercase"}}>ENGENHARIA DE IA</div>
+            <div style={{display: "flex", gap: 8, background: "#0d1117", padding: 4, borderRadius: 8, border: "1px solid #1e293b"}}>
+              <button
+                onClick={() => setView("pipeline")}
+                style={{
+                  background: view === "pipeline" ? "#1e293b" : "none",
+                  border: "none", color: view === "pipeline" ? "#e2e8f0" : "#475569",
+                  padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700, transition: "all 0.2s"
+                }}
+              >Básico</button>
+              <button
+                onClick={() => setView("hpc")}
+                style={{
+                  background: view === "hpc" ? "#1e293b" : "none",
+                  border: "none", color: view === "hpc" ? "#e2e8f0" : "#475569",
+                  padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700, transition: "all 0.2s"
+                }}
+              >HPC Expert</button>
+            </div>
+          </div>
+          <h1 style={{fontSize:"clamp(22px,5vw,36px)",fontWeight:700,margin:0,background:"linear-gradient(90deg,#e2e8f0,#94a3b8)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:"-0.02em"}}>
+            {view === "pipeline" ? "Pipeline de Treinamento de IA" : "HPC & Escala de Supercomputação"}
           </h1>
-          <p style={{color:"#64748b",marginTop:8,fontSize:13,fontFamily:"system-ui,sans-serif"}}>
-            Clique em cada etapa → explore conceito, detalhes e código.
+          <p style={{color:"#64748b",marginTop:8,fontSize:14,fontFamily:"system-ui,sans-serif",lineHeight: 1.5}}>
+            {view === "pipeline"
+              ? "O guia completo da jornada dos dados até o modelo final de Inteligência Artificial."
+              : "Como DeepSeek e Anthropic conectam milhares de GPUs para treinar modelos com trilhões de parâmetros."}
           </p>
         </div>
       </div>
 
       <div style={{maxWidth:900,margin:"0 auto",padding:"32px 16px"}}>
-        {/* Steps Grid */}
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10,marginBottom:28}}>
-          {steps.map((s,i) => (
-            <button key={s.id} onClick={()=>selectStep(s.id)} style={{
-              background:activeStep===s.id?`linear-gradient(135deg,${s.color}15,${s.color}05)`:"#0d1117",
-              border:activeStep===s.id?`1px solid ${s.color}60`:"1px solid #1e293b",
-              borderRadius:10,padding:"14px 16px",cursor:"pointer",textAlign:"left",
-              transition:"all 0.2s",color:"inherit",position:"relative"
-            }}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
-                <span style={{fontSize:10,color:s.color,fontWeight:700,letterSpacing:"0.1em",opacity:0.7}}>{String(i+1).padStart(2,"0")}</span>
-                <span style={{fontSize:17}}>{s.emoji}</span>
-              </div>
-              <div style={{fontSize:13,fontWeight:600,color:activeStep===s.id?s.color:"#cbd5e1",marginBottom:2,fontFamily:"system-ui,sans-serif"}}>{s.title}</div>
-              <div style={{fontSize:11,color:"#475569",fontFamily:"system-ui,sans-serif"}}>{s.subtitle}</div>
-              {activeStep===s.id&&<div style={{position:"absolute",right:10,top:10,width:6,height:6,borderRadius:"50%",background:s.color,boxShadow:`0 0 8px ${s.color}`}}/>}
-            </button>
-          ))}
-        </div>
-
-        {/* Detail Panel */}
-        {step && (
-          <div style={{background:"#0d1117",border:`1px solid ${step.color}30`,borderRadius:14,overflow:"hidden",marginBottom:28,animation:"fadeIn 0.2s ease"}}>
-            <div style={{padding:"18px 22px",borderBottom:"1px solid #1e293b",background:`linear-gradient(135deg,${step.color}10,transparent)`,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-              <div>
-                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5}}>
-                  <span style={{fontSize:22}}>{step.emoji}</span>
-                  <h2 style={{margin:0,fontSize:17,color:step.color,fontFamily:"system-ui,sans-serif"}}>{step.title}</h2>
-                </div>
-                <p style={{margin:0,fontSize:12,color:"#94a3b8",fontFamily:"system-ui,sans-serif",fontStyle:"italic"}}>💡 {step.analogy}</p>
-              </div>
-              <button onClick={()=>setActiveStep(null)} style={{background:"none",border:"1px solid #334155",color:"#64748b",cursor:"pointer",fontSize:11,padding:"3px 9px",borderRadius:6,fontFamily:"inherit"}}>fechar ×</button>
-            </div>
-            <div style={{display:"flex",borderBottom:"1px solid #1e293b",padding:"0 22px"}}>
-              {["conceito","detalhes","código"].map(t=>(
-                <button key={t} onClick={()=>setTab(t)} style={{background:"none",border:"none",borderBottom:tab===t?`2px solid ${step.color}`:"2px solid transparent",color:tab===t?step.color:"#475569",padding:"11px 14px",cursor:"pointer",fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:"inherit",transition:"all 0.15s"}}>{t}</button>
-              ))}
-            </div>
-            <div style={{padding:"22px"}}>
-              {tab==="conceito"&&(
-                <div>
-                  <p style={{fontSize:14,lineHeight:1.7,color:"#cbd5e1",marginBottom:18,fontFamily:"system-ui,sans-serif"}}>{step.what}</p>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:7}}>
-                    {step.sources.map((src,i)=>(
-                      <div key={i} style={{padding:"7px 11px",background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:6,fontSize:12,color:"#64748b",fontFamily:"system-ui,sans-serif",display:"flex",alignItems:"center",gap:7}}>
-                        <span style={{color:step.color,fontSize:9}}>▸</span>{src}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {tab==="detalhes"&&(
-                <div>
-                  <h3 style={{fontSize:12,color:step.color,marginBottom:14,fontFamily:"system-ui,sans-serif",fontWeight:600,letterSpacing:"0.05em"}}>{step.deepDive.title}</h3>
-                  <pre style={{fontSize:12,lineHeight:1.8,color:"#94a3b8",whiteSpace:"pre-wrap",margin:0,fontFamily:"inherit"}}>{step.deepDive.content}</pre>
-                </div>
-              )}
-              {tab==="código"&&(
-                <div style={{background:"#030508",border:"1px solid #1e293b",borderRadius:8,overflow:"hidden"}}>
-                  <div style={{padding:"7px 14px",borderBottom:"1px solid #1e293b",display:"flex",alignItems:"center",gap:7}}>
-                    <div style={{width:7,height:7,borderRadius:"50%",background:"#ff5f57"}}/>
-                    <div style={{width:7,height:7,borderRadius:"50%",background:"#ffbd2e"}}/>
-                    <div style={{width:7,height:7,borderRadius:"50%",background:"#28c840"}}/>
-                    <span style={{fontSize:10,color:"#334155",marginLeft:6}}>python</span>
-                  </div>
-                  <pre style={{padding:"18px",margin:0,fontSize:11,lineHeight:1.7,color:"#7dd3fc",overflowX:"auto",fontFamily:"'IBM Plex Mono','Fira Code',monospace"}}><code>{step.deepDive.code}</code></pre>
-                </div>
-              )}
-            </div>
-          </div>
+        {view === "pipeline" ? (
+          <PipelineView steps={steps} llmExtra={llmExtra} />
+        ) : (
+          hpcLoaded ? <window.HPCGuide /> : <div style={{textAlign:"center", padding: 40, color: "#475569"}}>Carregando arquitetura HPC...</div>
         )}
 
-        {/* LLM Section */}
-        <div style={{background:"#0d1117",border:"1px solid #1e293b",borderRadius:14,padding:"22px"}}>
-          <div style={{marginBottom:18}}>
-            <div style={{fontSize:11,color:"#475569",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:5}}>CASO ESPECIAL</div>
-            <h2 style={{margin:0,fontSize:15,color:"#e2e8f0",fontFamily:"system-ui,sans-serif"}}>Pipeline de LLMs — ChatGPT, Claude, Gemini</h2>
-            <p style={{color:"#475569",fontSize:12,marginTop:5,fontFamily:"system-ui,sans-serif"}}>O pipeline geral + 3 etapas exclusivas de modelos de linguagem</p>
-          </div>
-          <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:22,alignItems:"center"}}>
-            {["Coleta","Limpeza","Tokenização","Pré-treino","Fine-tuning","RLHF","Avaliação","Deploy","Monitoramento"].map((s,i,arr)=>(
-              <React.Fragment key={i}>
-                <div style={{padding:"5px 11px",background:"#ffffff10",border:"1px solid #ffffff20",borderRadius:20,fontSize:11,color:"#94a3b8",fontFamily:"system-ui,sans-serif",whiteSpace:"nowrap"}}>{s}</div>
-                {i<arr.length-1&&<span style={{color:"#334155",fontSize:10}}>→</span>}
-              </React.Fragment>
-            ))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
-            {llmExtra.map((item,i)=>(
-              <div key={i} style={{background:"#070b11",border:`1px solid ${item.color}25`,borderRadius:10,padding:"15px"}}>
-                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                  <span style={{fontSize:15}}>{item.emoji}</span>
-                  <span style={{fontSize:12,fontWeight:600,color:item.color,fontFamily:"system-ui,sans-serif"}}>{item.title}</span>
-                </div>
-                <pre style={{fontSize:11,lineHeight:1.7,color:"#64748b",whiteSpace:"pre-wrap",margin:0,fontFamily:"system-ui,sans-serif"}}>{item.content}</pre>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{marginTop:20,padding:"14px 18px",background:"#0d1117",border:"1px solid #1e293b",borderRadius:10,fontSize:12,color:"#475569",fontFamily:"system-ui,sans-serif",textAlign:"center"}}>
-          Clique em qualquer etapa acima → explore as abas <strong style={{color:"#64748b"}}>conceito</strong>, <strong style={{color:"#64748b"}}>detalhes</strong> e <strong style={{color:"#64748b"}}>código</strong>
+        <div style={{marginTop:30,padding:"16px 20px",background:"#0d1117",border:"1px solid #1e293b",borderRadius:12,fontSize:12,color:"#475569",fontFamily:"system-ui,sans-serif",textAlign:"center"}}>
+          {view === "pipeline"
+            ? <span>Dica: Clique em cada etapa acima para ver o <strong style={{color:"#64748b"}}>código Python</strong> correspondente.</span>
+            : "Você está no modo Especialista. Explore os pilares da distribuição de carga e hardware de ponta."}
         </div>
       </div>
     </div>
