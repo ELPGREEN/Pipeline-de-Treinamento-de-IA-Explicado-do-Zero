@@ -7,6 +7,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -20,7 +22,8 @@
 <body>
 <div id="root"></div>
 
-<!-- Load HPC Guide Component -->
+<!-- Load Shared UI and Components -->
+<script type="text/babel" src="shared-ui.jsx"></script>
 <script type="text/babel" src="hpc-guide.jsx"></script>
 
 <script type="text/babel">
@@ -29,7 +32,7 @@ const steps = [
     id:1,emoji:"🌐",title:"Coleta de Dados",subtitle:"Reunir o material bruto",color:"#00d4ff",
     analogy:"Dar pra um funcionário novo uma biblioteca inteira para estudar.",
     what:"A IA precisa aprender com exemplos reais. Você reúne uma quantidade enorme de dados — quanto mais e melhor a qualidade, melhor o modelo.",
-    sources:["Bancos de dados SQL/NoSQL","APIs externas (Twitter, Wikipedia)","Documentos PDF, Word, HTML","Imagens e vídeos","Sensores IoT","Web scraping"],
+    sources:["Bancos de dados SQL/NoSQL","APIs externas","Documentos PDF, Word, HTML","Imagens e vídeos","Sensores IoT","Web scraping"],
     deepDive:{
       title:"Por que dados são tudo?",
       content:`"Garbage in, garbage out" — dados ruins ensinam padrões ruins.
@@ -180,6 +183,7 @@ function PipelineView({ steps, llmExtra }) {
   const [activeStep, setActiveStep] = React.useState(null);
   const [tab, setTab] = React.useState("conceito");
   const step = steps.find(s => s.id === activeStep);
+  const UI = window.AppUI;
 
   function selectStep(id) {
     if (activeStep === id) { setActiveStep(null); return; }
@@ -192,12 +196,7 @@ function PipelineView({ steps, llmExtra }) {
       {/* Steps Grid */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10,marginBottom:28}}>
         {steps.map((s,i) => (
-          <button key={s.id} onClick={()=>selectStep(s.id)} style={{
-            background:activeStep===s.id?`linear-gradient(135deg,${s.color}15,${s.color}05)`:"#0d1117",
-            border:activeStep===s.id?`1px solid ${s.color}60`:"1px solid #1e293b",
-            borderRadius:10,padding:"14px 16px",cursor:"pointer",textAlign:"left",
-            transition:"all 0.2s",color:"inherit",position:"relative"
-          }}>
+          <UI.Card key={s.id} onClick={()=>selectStep(s.id)} active={activeStep===s.id} color={s.color}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
               <span style={{fontSize:10,color:s.color,fontWeight:700,letterSpacing:"0.1em",opacity:0.7}}>{String(i+1).padStart(2,"0")}</span>
               <span style={{fontSize:17}}>{s.emoji}</span>
@@ -205,7 +204,7 @@ function PipelineView({ steps, llmExtra }) {
             <div style={{fontSize:13,fontWeight:600,color:activeStep===s.id?s.color:"#cbd5e1",marginBottom:2,fontFamily:"system-ui,sans-serif"}}>{s.title}</div>
             <div style={{fontSize:11,color:"#475569",fontFamily:"system-ui,sans-serif"}}>{s.subtitle}</div>
             {activeStep===s.id&&<div style={{position:"absolute",right:10,top:10,width:6,height:6,borderRadius:"50%",background:s.color,boxShadow:`0 0 8px ${s.color}`}}/>}
-          </button>
+          </UI.Card>
         ))}
       </div>
 
@@ -222,11 +221,12 @@ function PipelineView({ steps, llmExtra }) {
             </div>
             <button onClick={()=>setActiveStep(null)} style={{background:"none",border:"1px solid #334155",color:"#64748b",cursor:"pointer",fontSize:11,padding:"3px 9px",borderRadius:6,fontFamily:"inherit"}}>fechar ×</button>
           </div>
-          <div style={{display:"flex",borderBottom:"1px solid #1e293b",padding:"0 22px"}}>
-            {["conceito","detalhes","código"].map(t=>(
-              <button key={t} onClick={()=>setTab(t)} style={{background:"none",border:"none",borderBottom:tab===t?`2px solid ${step.color}`:"2px solid transparent",color:tab===t?step.color:"#475569",padding:"11px 14px",cursor:"pointer",fontSize:11,letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:"inherit",transition:"all 0.15s"}}>{t}</button>
-            ))}
-          </div>
+          <UI.Tabs
+            tabs={["conceito","detalhes","código"]}
+            activeTab={tab}
+            onTabChange={setTab}
+            color={step.color}
+          />
           <div style={{padding:"22px"}}>
             {tab==="conceito"&&(
               <div>
@@ -247,15 +247,7 @@ function PipelineView({ steps, llmExtra }) {
               </div>
             )}
             {tab==="código"&&(
-              <div style={{background:"#030508",border:"1px solid #1e293b",borderRadius:8,overflow:"hidden"}}>
-                <div style={{padding:"7px 14px",borderBottom:"1px solid #1e293b",display:"flex",alignItems:"center",gap:7}}>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:"#ff5f57"}}/>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:"#ffbd2e"}}/>
-                  <div style={{width:7,height:7,borderRadius:"50%",background:"#28c840"}}/>
-                  <span style={{fontSize:10,color:"#334155",marginLeft:6}}>python</span>
-                </div>
-                <pre style={{padding:"18px",margin:0,fontSize:11,lineHeight:1.7,color:"#7dd3fc",overflowX:"auto",fontFamily:"'IBM Plex Mono','Fira Code',monospace"}}><code>{step.deepDive.code}</code></pre>
-              </div>
+              <UI.CodeBlock code={step.deepDive.code} language="python" />
             )}
           </div>
         </div>
@@ -294,16 +286,16 @@ function PipelineView({ steps, llmExtra }) {
 
 function App() {
   const [view, setView] = React.useState("pipeline"); // "pipeline" or "hpc"
-  const [hpcLoaded, setHpcLoaded] = React.useState(false);
+  const [isLoaded, setIsLoaded] = React.useState(false);
 
   React.useEffect(() => {
-    const checkHPC = setInterval(() => {
-      if (window.HPCGuide) {
-        setHpcLoaded(true);
-        clearInterval(checkHPC);
+    const checkReady = setInterval(() => {
+      if (window.HPCGuide && window.AppUI) {
+        setIsLoaded(true);
+        clearInterval(checkReady);
       }
     }, 100);
-    return () => clearInterval(checkHPC);
+    return () => clearInterval(checkReady);
   }, []);
 
   return (
@@ -344,10 +336,14 @@ function App() {
       </div>
 
       <div style={{maxWidth:900,margin:"0 auto",padding:"32px 16px"}}>
-        {view === "pipeline" ? (
-          <PipelineView steps={steps} llmExtra={llmExtra} />
+        {!isLoaded ? (
+            <div style={{textAlign:"center", padding: 40, color: "#475569"}}>Carregando arquitetura...</div>
         ) : (
-          hpcLoaded ? <window.HPCGuide /> : <div style={{textAlign:"center", padding: 40, color: "#475569"}}>Carregando arquitetura HPC...</div>
+            view === "pipeline" ? (
+              <PipelineView steps={steps} llmExtra={llmExtra} />
+            ) : (
+              <window.HPCGuide />
+            )
         )}
 
         <div style={{marginTop:30,padding:"16px 20px",background:"#0d1117",border:"1px solid #1e293b",borderRadius:12,fontSize:12,color:"#475569",fontFamily:"system-ui,sans-serif",textAlign:"center"}}>

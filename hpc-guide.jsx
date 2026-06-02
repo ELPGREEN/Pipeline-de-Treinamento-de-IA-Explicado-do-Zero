@@ -102,6 +102,7 @@ function HPCGuide() {
   const [activeStepId, setActiveStepId] = React.useState(null);
   const [tab, setTab] = React.useState("conceito");
   const step = hpcSteps.find(s => s.id === activeStepId);
+  const UI = window.AppUI;
 
   return (
     <div style={{animation: "fadeIn 0.3s ease"}}>
@@ -116,20 +117,16 @@ function HPCGuide() {
 
       <div style={{display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 12, marginBottom: 30}}>
         {hpcSteps.map((s) => (
-          <button
+          <UI.Card
             key={s.id}
             onClick={() => { setActiveStepId(s.id); setTab("conceito"); }}
-            style={{
-              background: activeStepId === s.id ? `${s.color}20` : "#0d1117",
-              border: activeStepId === s.id ? `1px solid ${s.color}` : "1px solid #1e293b",
-              borderRadius: 12, padding: "16px", cursor: "pointer", textAlign: "left",
-              transition: "all 0.2s", color: "inherit"
-            }}
+            active={activeStepId === s.id}
+            color={s.color}
           >
             <div style={{fontSize: 20, marginBottom: 8}}>{s.emoji}</div>
             <div style={{fontSize: 14, fontWeight: 700, color: activeStepId === s.id ? s.color : "#cbd5e1"}}>{s.title}</div>
             <div style={{fontSize: 11, color: "#64748b"}}>{s.subtitle}</div>
-          </button>
+          </UI.Card>
         ))}
       </div>
 
@@ -143,23 +140,12 @@ function HPCGuide() {
             <button onClick={() => setActiveStepId(null)} style={{background: "none", border: "1px solid #334155", color: "#64748b", cursor: "pointer", fontSize: 12, padding: "4px 10px", borderRadius: 8}}>fechar ×</button>
           </div>
 
-          <div style={{display: "flex", borderBottom: "1px solid #1e293b", padding: "0 24px"}}>
-            {["conceito", "detalhes", "código"].map(t => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                style={{
-                  background: "none", border: "none",
-                  borderBottom: tab === t ? `2px solid ${step.color}` : "2px solid transparent",
-                  color: tab === t ? step.color : "#475569",
-                  padding: "14px 16px", cursor: "pointer", fontSize: 12, fontWeight: 600,
-                  textTransform: "uppercase", transition: "all 0.2s"
-                }}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+          <UI.Tabs
+            tabs={["conceito", "detalhes", "código"]}
+            activeTab={tab}
+            onTabChange={setTab}
+            color={step.color}
+          />
 
           <div style={{padding: "24px"}}>
             {tab === "conceito" && (
@@ -182,16 +168,7 @@ function HPCGuide() {
               </div>
             )}
             {tab === "código" && (
-              <div style={{background: "#030508", borderRadius: 10, border: "1px solid #1e293b", overflow: "hidden"}}>
-                <div style={{padding: "10px 16px", borderBottom: "1px solid #1e293b", fontSize: 11, color: "#475569", display: "flex", gap: 8}}>
-                  <div style={{width:8, height:8, borderRadius:"50%", background:"#ff5f57"}}/>
-                  <div style={{width:8, height:8, borderRadius:"50%", background:"#ffbd2e"}}/>
-                  <div style={{width:8, height:8, borderRadius:"50%", background:"#28c840"}}/>
-                </div>
-                <pre style={{padding: "20px", margin: 0, fontSize: 13, color: "#7dd3fc", overflowX: "auto", fontFamily: "monospace"}}>
-                  <code>{step.deepDive.code}</code>
-                </pre>
-              </div>
+              <UI.CodeBlock code={step.deepDive.code} language="python" />
             )}
           </div>
         </div>
@@ -238,4 +215,13 @@ function HPCGuide() {
   );
 }
 
-window.HPCGuide = HPCGuide;
+// Global registry safely attached to window
+try {
+  Object.defineProperty(window, 'HPCGuide', {
+    value: HPCGuide,
+    writable: false,
+    configurable: false
+  });
+} catch (e) {
+  window.HPCGuide = HPCGuide;
+}
