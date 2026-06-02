@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Pipeline de Treinamento de IA & HPC</title>
+<title>Engenharia de IA & HPC</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
@@ -12,345 +12,130 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:#080c14;color:#e2e8f0;font-family:'IBM Plex Mono',monospace; overflow-x: hidden;}
+  body{background:#080c14;color:#e2e8f0;font-family:'IBM Plex Mono',monospace;overflow-x:hidden}
   ::-webkit-scrollbar{width:4px;height:4px}
   ::-webkit-scrollbar-track{background:#0d1117}
   ::-webkit-scrollbar-thumb{background:#334155;border-radius:4px}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
 <div id="root"></div>
-
-<!-- Load Shared UI and Components -->
-<script type="text/babel" src="shared-ui.jsx"></script>
-<script type="text/babel" src="hpc-guide.jsx"></script>
-
 <script type="text/babel">
-const steps = [
-  {
-    id:1,emoji:"🌐",title:"Coleta de Dados",subtitle:"Reunir o material bruto",color:"#00d4ff",
-    analogy:"Dar pra um funcionário novo uma biblioteca inteira para estudar.",
-    what:"A IA precisa aprender com exemplos reais. Você reúne uma quantidade enorme de dados — quanto mais e melhor a qualidade, melhor o modelo.",
-    sources:["Bancos de dados SQL/NoSQL","APIs externas","Documentos PDF, Word, HTML","Imagens e vídeos","Sensores IoT","Web scraping"],
-    deepDive:{
-      title:"Por que dados são tudo?",
-      content:`"Garbage in, garbage out" — dados ruins ensinam padrões ruins.
+const UI = {
+  Card: ({ children, onClick, active, color }) => (
+    <button onClick={onClick} style={{
+      background: active ? `${color}15` : "#0d1117",
+      border: active ? `1px solid ${color}` : "1px solid #1e293b",
+      borderRadius: 12, padding: "16px", cursor: "pointer", textAlign: "left",
+      transition: "all 0.2s", color: "inherit"
+    }}>{children}</button>
+  ),
+  Tabs: ({ tabs, activeTab, onTabChange, color }) => (
+    <div style={{ display: "flex", borderBottom: "1px solid #1e293b", padding: "0 20px" }}>
+      {tabs.map(t => (
+        <button key={t} onClick={() => onTabChange(t)} style={{
+          background: "none", border: "none",
+          borderBottom: activeTab === t ? `2px solid ${color}` : "2px solid transparent",
+          color: activeTab === t ? color : "#475569",
+          padding: "12px 14px", cursor: "pointer", fontSize: 12, fontWeight: 600,
+          textTransform: "uppercase"
+        }}>{t}</button>
+      ))}
+    </div>
+  ),
+  Code: ({ code }) => (
+    <div style={{ background: "#030508", borderRadius: 8, border: "1px solid #1e293b", overflow: "hidden" }}>
+      <div style={{ padding: "8px 12px", borderBottom: "1px solid #1e293b", display: "flex", gap: 6 }}>
+        {[1,2,3].map(i=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:i===1?"#ff5f57":i===2?"#ffbd2e":"#28c840"}}/>)}
+      </div>
+      <pre style={{ padding: "16px", margin: 0, fontSize: 13, color: "#7dd3fc", overflowX: "auto" }}><code>{code}</code></pre>
+    </div>
+  )
+};
 
-Um LLM como o GPT-4 foi treinado com trilhões de palavras:
-livros inteiros, Wikipedia, código do GitHub, artigos científicos.
-
-Escala real:
-• GPT-3: ~300 bilhões de tokens
-• LLaMA 2: ~2 trilhões de tokens
-• 1 token ≈ 0.75 palavras em inglês`,
-      code:`import requests
-
-def coletar_tweets(query, limite=1000):
-    url = "https://api.twitter.com/2/tweets/search"
-    headers = {"Authorization": f"Bearer {TOKEN}"}
-    params = {"query": query, "max_results": 100}
-    
-    tweets = []
-    while len(tweets) < limite:
-        r = requests.get(url, headers=headers, params=params)
-        tweets.extend(r.json()["data"])
-    return tweets`
-    }
-  },
-  {
-    id:2,emoji:"🧹",title:"Preparação",subtitle:"Limpeza e organização",color:"#22c55e",
-    analogy:"Alguns livros têm páginas rasgadas ou erradas. Você joga fora o lixo e organiza o resto.",
-    what:"Remover duplicatas, corrigir erros e formatar tudo para que a IA consiga processar sem ruído.",
-    sources:["Deduplicação de texto","Remoção de PII (dados pessoais)","Filtros de toxicidade","Normalização de texto","Data Augmentation"],
-    deepDive:{
-      title:"O custo da limpeza",
-      content:`Em LLMs, 90% do trabalho é limpeza. O dataset "Common Crawl" tem petabytes, mas só uma fração é usada após filtros de qualidade.
-
-Processos:
-1. Deduplicação (evita o modelo decorar)
-2. Filtragem de linguagem ofensiva
-3. Extração de texto de HTML sujo
-4. Identificação de idioma`,
-      code:`import re
-
-def limpar_texto(texto):
-    # Remove URLs
-    texto = re.sub(r'http\S+', '', texto)
-    # Remove caracteres especiais
-    texto = re.sub(r'[^a-zA-Z0-9\s]', '', texto)
-    # Lowercase
-    return texto.lower().strip()`
-    }
-  },
-  {
-    id:3,emoji:"📊",title:"Divisão",subtitle:"Treino, Validação e Teste",color:"#eab308",
-    analogy:"Separar o livro em: Estudo (70%), Exercícios (15%) e Prova Final (15%).",
-    what:"Você nunca deixa o modelo ver a prova (Test Set) antes da hora, senão ele decora em vez de aprender.",
-    sources:["Scikit-learn train_test_split","Cross-validation","K-Fold","Stratified Sampling"],
-    deepDive:{
-      title:"A Prova Final",
-      content:`O Test Set é sagrado. Se você ajustar seu modelo baseado no resultado do Test Set, você está "vazando" informação.
-
-O Validation Set serve para ajustar os botões (hiperparâmetros) enquanto o modelo ainda está na escola.`,
-      code:`from sklearn.model_selection import train_test_split
-
-# 80% treino, 20% teste
-train, test = train_test_split(
-    df, test_size=0.2, random_state=42
-)`
-    }
-  },
-  {
-    id:4,emoji:"🧬",title:"Engenharia de Features",subtitle:"O que realmente importa?",color:"#f97316",
-    analogy:"Um professor sublinhando o que vai cair na prova para o aluno focar no essencial.",
-    what:"Transformar dados brutos em formatos que facilitam o aprendizado (ex: extrair o dia da semana de uma data).",
-    sources:["One-hot encoding","Scaling (MinMax/Standard)","Embeddings","PCA (Redução de dimensionalidade)"],
-    deepDive:{
-      title:"Transformação Matemática",
-      content:`Modelos não entendem "Verde" ou "São Paulo". Tudo precisa virar número.
-
-Embeddings transformam palavras em vetores de centenas de dimensões, onde palavras parecidas ficam "perto" geometricamente.`,
-      code:`from sklearn.preprocessing import StandardScaler
-
-scaler = StandardScaler()
-# Normaliza os dados para média 0 e desvio 1
-X_scaled = scaler.fit_transform(X)`
-    }
-  },
-  {
-    id:5,emoji:"🚀",title:"Treinamento",subtitle:"A hora da verdade",color:"#ef4444",
-    analogy:"O funcionário estuda dia e noite, erra, é corrigido e tenta de novo milhares de vezes.",
-    what:"O algoritmo ajusta milhões de pesos internos para minimizar o erro entre sua previsão e a realidade.",
-    sources:["Redes Neurais (PyTorch/TensorFlow)","Backpropagation","Gradient Descent","GPUs/TPUs"],
-    deepDive:{
-      title:"O Ciclo de Aprendizado",
-      content:`1. Forward Pass: O modelo chuta um resultado.
-2. Loss Function: Calcula o tamanho do erro.
-3. Backward Pass: O erro volta pela rede.
-4. Optimizer: Ajusta os pesos para o próximo chute ser melhor.`,
-      code:`import torch.nn as nn
-
-model = nn.Sequential(
-    nn.Linear(input_size, 128),
-    nn.ReLU(),
-    nn.Linear(128, 1)
-)
-# O treinamento acontece aqui...`
-    }
-  },
-  {
-    id:6,emoji:"✅",title:"Validação",subtitle:"Métricas de sucesso",color:"#ec4899",
-    analogy:"Verificar se o funcionário está indo bem nos exercícios antes de dar a prova real.",
-    what:"Usar métricas matemáticas para saber se o modelo está pronto para o mundo real.",
-    sources:["Acurácia, Precisão, Recall","F1-Score","Matriz de Confusão","Log Loss"],
-    deepDive:{
-      title:"Além da Acurácia",
-      content:`Se 99% das pessoas não têm uma doença, um modelo que sempre diz "não tem" terá 99% de acurácia, mas é inútil.
-
-Por isso usamos Precisão (evitar falsos positivos) e Recall (evitar falsos negativos).`,
-      code:`from sklearn.metrics import f1_score
-
-# Calcula o equilíbrio entre Precisão e Recall
-score = f1_score(y_true, y_pred)`
-    }
-  }
-];
-
-const llmExtra = [
-  {
-    emoji:"🔤", title:"Tokenização", color:"#a855f7",
-    content:`Texto não pode entrar direto na rede neural.
-"Olá mundo" → [15339, 8278]
-
-O modelo aprende a prever qual o próximo número.`
-  },
-  {
-    emoji:"🎯", title:"Fine-tuning", color:"#22c55e",
-    content:`Depois do pré-treino geral, você especializa o modelo.
-"Instrução: X → Resposta ideal: Y"
-
-O modelo aprende a seguir comandos.`
-  },
-  {
-    emoji:"👥", title:"RLHF", color:"#ec4899",
-    content:`Reforço via Feedback Humano.
-Humanos rankeiam as melhores respostas e o modelo aprende o que nós preferimos.`
-  },
-];
-
-function PipelineView({ steps, llmExtra }) {
-  const [activeStep, setActiveStep] = React.useState(null);
+const Guide = ({ data }) => {
+  const [activeId, setActiveId] = React.useState(null);
   const [tab, setTab] = React.useState("conceito");
-  const step = steps.find(s => s.id === activeStep);
-  const UI = window.AppUI;
-
-  function selectStep(id) {
-    if (activeStep === id) { setActiveStep(null); return; }
-    setActiveStep(id);
-    setTab("conceito");
-  }
+  const item = data.items.find(i => i.id === activeId);
 
   return (
-    <div style={{animation: "fadeIn 0.3s ease"}}>
-      {/* Steps Grid */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))",gap:10,marginBottom:28}}>
-        {steps.map((s,i) => (
-          <UI.Card key={s.id} onClick={()=>selectStep(s.id)} active={activeStep===s.id} color={s.color}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:5}}>
-              <span style={{fontSize:10,color:s.color,fontWeight:700,letterSpacing:"0.1em",opacity:0.7}}>{String(i+1).padStart(2,"0")}</span>
-              <span style={{fontSize:17}}>{s.emoji}</span>
-            </div>
-            <div style={{fontSize:13,fontWeight:600,color:activeStep===s.id?s.color:"#cbd5e1",marginBottom:2,fontFamily:"system-ui,sans-serif"}}>{s.title}</div>
-            <div style={{fontSize:11,color:"#475569",fontFamily:"system-ui,sans-serif"}}>{s.subtitle}</div>
-            {activeStep===s.id&&<div style={{position:"absolute",right:10,top:10,width:6,height:6,borderRadius:"50%",background:s.color,boxShadow:`0 0 8px ${s.color}`}}/>}
+    <div style={{animation:"fIn 0.3s ease"}}>
+      <div style={{marginBottom:24, textAlign:"center"}}>
+        <h2 style={{fontSize:22, color:"#e2e8f0", marginBottom:8}}>{data.title}</h2>
+        <p style={{color:"#94a3b8", fontSize:14}}>{data.subtitle}</p>
+      </div>
+      <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:10, marginBottom:24}}>
+        {data.items.map((s, idx) => (
+          <UI.Card key={s.id} onClick={()=>{setActiveId(s.id); setTab("conceito")}} active={activeId===s.id} color={s.color}>
+            <div style={{fontSize:10, color:s.color, fontWeight:700, opacity:0.6, marginBottom:4}}>ETAPA {String(idx+1).padStart(2,"0")}</div>
+            <div style={{fontSize:14, fontWeight:700, color:activeId===s.id?s.color:"#cbd5e1"}}>{s.title}</div>
+            <div style={{fontSize:11, color:"#64748b"}}>{s.subtitle}</div>
           </UI.Card>
         ))}
       </div>
-
-      {/* Detail Panel */}
-      {step && (
-        <div style={{background:"#0d1117",border:`1px solid ${step.color}30`,borderRadius:14,overflow:"hidden",marginBottom:28,animation:"fadeIn 0.2s ease"}}>
-          <div style={{padding:"18px 22px",borderBottom:"1px solid #1e293b",background:`linear-gradient(135deg,${step.color}10,transparent)`,display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:5}}>
-                <span style={{fontSize:22}}>{step.emoji}</span>
-                <h2 style={{margin:0,fontSize:17,color:step.color,fontFamily:"system-ui,sans-serif"}}>{step.title}</h2>
-              </div>
-              <p style={{margin:0,fontSize:12,color:"#94a3b8",fontFamily:"system-ui,sans-serif",fontStyle:"italic"}}>💡 {step.analogy}</p>
-            </div>
-            <button onClick={()=>setActiveStep(null)} style={{background:"none",border:"1px solid #334155",color:"#64748b",cursor:"pointer",fontSize:11,padding:"3px 9px",borderRadius:6,fontFamily:"inherit"}}>fechar ×</button>
+      {item && (
+        <div style={{background:"#0d1117", border:`1px solid ${item.color}30`, borderRadius:12, overflow:"hidden"}}>
+          <div style={{padding:"16px 20px", borderBottom:"1px solid #1e293b", background:`linear-gradient(135deg, ${item.color}08, transparent)`, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+            <h3 style={{fontSize:16, color:item.color}}>{item.emoji} {item.title}</h3>
+            <button onClick={()=>setActiveId(null)} style={{background:"none", border:"1px solid #334155", color:"#64748b", cursor:"pointer", padding:"2px 8px", borderRadius:6}}>fechar ×</button>
           </div>
-          <UI.Tabs
-            tabs={["conceito","detalhes","código"]}
-            activeTab={tab}
-            onTabChange={setTab}
-            color={step.color}
-          />
-          <div style={{padding:"22px"}}>
-            {tab==="conceito"&&(
+          <UI.Tabs tabs={["conceito", "detalhes", "código"]} activeTab={tab} onTabChange={setTab} color={item.color} />
+          <div style={{padding:"20px"}}>
+            {tab==="conceito" && (
               <div>
-                <p style={{fontSize:14,lineHeight:1.7,color:"#cbd5e1",marginBottom:18,fontFamily:"system-ui,sans-serif"}}>{step.what}</p>
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:7}}>
-                  {step.sources.map((src,i)=>(
-                    <div key={i} style={{padding:"7px 11px",background:"#0a0f1a",border:"1px solid #1e293b",borderRadius:6,fontSize:12,color:"#64748b",fontFamily:"system-ui,sans-serif",display:"flex",alignItems:"center",gap:7}}>
-                      <span style={{color:step.color,fontSize:9}}>▸</span>{src}
-                    </div>
-                  ))}
+                <p style={{fontSize:14, color:"#cbd5e1", marginBottom:16}}>💡 {item.analogy}</p>
+                <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:8}}>
+                  {item.points.map((p,i)=><div key={i} style={{padding:"10px", background:"#0a0f1a", border:"1px solid #1e293b", borderRadius:6, fontSize:13, color:"#94a3b8"}}>◆ {p}</div>)}
                 </div>
               </div>
             )}
-            {tab==="detalhes"&&(
-              <div>
-                <h3 style={{fontSize:12,color:step.color,marginBottom:14,fontFamily:"system-ui,sans-serif",fontWeight:600,letterSpacing:"0.05em"}}>{step.deepDive.title}</h3>
-                <pre style={{fontSize:12,lineHeight:1.8,color:"#94a3b8",whiteSpace:"pre-wrap",margin:0,fontFamily:"inherit"}}>{step.deepDive.content}</pre>
-              </div>
-            )}
-            {tab==="código"&&(
-              <UI.CodeBlock code={step.deepDive.code} language="python" />
-            )}
+            {tab==="detalhes" && <div style={{fontSize:14, lineHeight:1.7, color:"#cbd5e1", whiteSpace:"pre-wrap"}}>{item.deepDive.content}</div>}
+            {tab==="código" && <UI.Code code={item.deepDive.code} />}
           </div>
         </div>
       )}
-
-      {/* LLM Section */}
-      <div style={{background:"#0d1117",border:"1px solid #1e293b",borderRadius:14,padding:"22px"}}>
-        <div style={{marginBottom:18}}>
-          <div style={{fontSize:11,color:"#475569",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:5}}>CASO ESPECIAL</div>
-          <h2 style={{margin:0,fontSize:15,color:"#e2e8f0",fontFamily:"system-ui,sans-serif"}}>Pipeline de LLMs — ChatGPT, Claude, Gemini</h2>
-          <p style={{color:"#475569",fontSize:12,marginTop:5,fontFamily:"system-ui,sans-serif"}}>O pipeline geral + 3 etapas exclusivas de modelos de linguagem</p>
-        </div>
-        <div style={{display:"flex",flexWrap:"wrap",gap:7,marginBottom:22,alignItems:"center"}}>
-          {["Coleta","Limpeza","Tokenização","Pré-treino","Fine-tuning","RLHF","Avaliação","Deploy","Monitoramento"].map((s,i,arr)=>(
-            <React.Fragment key={i}>
-              <div style={{padding:"5px 11px",background:"#ffffff10",border:"1px solid #ffffff20",borderRadius:20,fontSize:11,color:"#94a3b8",fontFamily:"system-ui,sans-serif",whiteSpace:"nowrap"}}>{s}</div>
-              {i<arr.length-1&&<span style={{color:"#334155",fontSize:10}}>→</span>}
-            </React.Fragment>
-          ))}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:10}}>
-          {llmExtra.map((item,i)=>(
-            <div key={i} style={{background:"#070b11",border:`1px solid ${item.color}25`,borderRadius:10,padding:"15px"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
-                <span style={{fontSize:15}}>{item.emoji}</span>
-                <span style={{fontSize:12,fontWeight:600,color:item.color,fontFamily:"system-ui,sans-serif"}}>{item.title}</span>
-              </div>
-              <pre style={{fontSize:11,lineHeight:1.7,color:"#64748b",whiteSpace:"pre-wrap",margin:0,fontFamily:"system-ui,sans-serif"}}>{item.content}</pre>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
-}
+};
+
+const appData = {
+  pipeline: {
+    title: "Pipeline de Dados IA", subtitle: "A jornada do dado bruto até a inteligência.",
+    items: [
+      { id:1, emoji:"🌐", title:"Coleta", subtitle:"Material bruto", color:"#00d4ff", analogy:"Biblioteca de estudo.", points:["Bancos de dados", "APIs externas", "Scraping"], deepDive:{ content:"Dados ruins geram modelos ruins. O GPT-4 usou trilhões de tokens.", code:"def collect(): pass" }},
+      { id:2, emoji:"🧹", title:"Limpeza", subtitle:"Preparação", color:"#22c55e", analogy:"Organizar páginas rasgadas.", points:["Deduplicação", "Remoção de PII", "Filtros"], deepDive:{ content:"90% do trabalho em LLM é limpeza de dados.", code:"def clean(t): return t.strip()" }},
+      { id:3, emoji:"🚀", title:"Treino", subtitle:"Processamento", color:"#ef4444", analogy:"Estudante em maratona.", points:["Backpropagation", "Loss calculation", "Optimization"], deepDive:{ content:"A GPU ajusta pesos matemáticos para reduzir o erro.", code:"model.train()" }}
+    ]
+  },
+  hpc: {
+    title: "Engenharia HPC & Cluster", subtitle: "Como DeepSeek e Anthropic escalam para milhares de GPUs.",
+    items: [
+      { id:'fw', emoji:"🏗️", title:"Frameworks", subtitle:"DeepSpeed & Megatron", color:"#3b82f6", analogy:"Guindastes para prédios.", points:["DeepSpeed ZeRO", "Megatron-LM", "Distributed Training"], deepDive:{ content:"ZeRO divide estados do otimizador e pesos entre GPUs para economizar VRAM.", code:"zero_optimization: { stage: 3 }" }},
+      { id:'tp', emoji:"🧠", title:"Aprendizado", subtitle:"SFT & GRPO", color:"#8b5cf6", analogy:"De aluno a mestre.", points:["Pre-training", "SFT (Instruções)", "GRPO (Raciocínio)"], deepDive:{ content:"O GRPO da DeepSeek elimina modelos de recompensa para treinar raciocínio lógico.", code:"grpo_loss = policy(advantages)" }},
+      { id:'bt', emoji:"📦", title:"Batching", subtitle:"Micro & Global", color:"#10b981", analogy:"Linha de montagem industrial.", points:["Micro-batch (Local)", "Gradient Accumulation", "Global Batch"], deepDive:{ content:"Global Batch = Micro Batch * Grad Acc * GPUs.", code:"batch = micro * acc * nodes" }},
+      { id:'hw', emoji:"🔌", title:"Hardware", subtitle:"H100 & NVLink", color:"#ef4444", analogy:"Autoestradas vs Estrada de terra.", points:["NVIDIA H100/B200", "NVLink (900GB/s)", "HBM3 Memory"], deepDive:{ content:"NVLink permite que GPUs falem entre si em velocidades absurdas.", code:"nvidia-smi topo -m" }}
+    ]
+  }
+};
 
 function App() {
-  const [view, setView] = React.useState("pipeline"); // "pipeline" or "hpc"
-  const [isLoaded, setIsLoaded] = React.useState(false);
-
-  React.useEffect(() => {
-    const checkReady = setInterval(() => {
-      if (window.HPCGuide && window.AppUI) {
-        setIsLoaded(true);
-        clearInterval(checkReady);
-      }
-    }, 100);
-    return () => clearInterval(checkReady);
-  }, []);
-
+  const [view, setView] = React.useState("pipeline");
   return (
-    <div style={{minHeight:"100vh",background:"#080c14",color:"#e2e8f0",fontFamily:"'IBM Plex Mono',monospace"}}>
-      {/* Header */}
-      <div style={{borderBottom:"1px solid #1e293b",padding:"32px 40px 24px",background:"linear-gradient(180deg,#0d1117 0%,#080c14 100%)"}}>
-        <div style={{maxWidth:900,margin:"0 auto"}}>
-          <div style={{display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12}}>
-            <div style={{fontSize:11,color:"#475569",letterSpacing:"0.2em",textTransform:"uppercase"}}>ENGENHARIA DE IA</div>
-            <div style={{display: "flex", gap: 8, background: "#0d1117", padding: 4, borderRadius: 8, border: "1px solid #1e293b"}}>
-              <button
-                onClick={() => setView("pipeline")}
-                style={{
-                  background: view === "pipeline" ? "#1e293b" : "none",
-                  border: "none", color: view === "pipeline" ? "#e2e8f0" : "#475569",
-                  padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700, transition: "all 0.2s"
-                }}
-              >Básico</button>
-              <button
-                onClick={() => setView("hpc")}
-                style={{
-                  background: view === "hpc" ? "#1e293b" : "none",
-                  border: "none", color: view === "hpc" ? "#e2e8f0" : "#475569",
-                  padding: "6px 14px", borderRadius: 6, cursor: "pointer", fontSize: 11, fontWeight: 700, transition: "all 0.2s"
-                }}
-              >HPC Expert</button>
-            </div>
-          </div>
-          <h1 style={{fontSize:"clamp(22px,5vw,36px)",fontWeight:700,margin:0,background:"linear-gradient(90deg,#e2e8f0,#94a3b8)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:"-0.02em"}}>
-            {view === "pipeline" ? "Pipeline de Treinamento de IA" : "HPC & Escala de Supercomputação"}
-          </h1>
-          <p style={{color:"#64748b",marginTop:8,fontSize:14,fontFamily:"system-ui,sans-serif",lineHeight: 1.5}}>
-            {view === "pipeline"
-              ? "O guia completo da jornada dos dados até o modelo final de Inteligência Artificial."
-              : "Como DeepSeek e Anthropic conectam milhares de GPUs para treinar modelos com trilhões de parâmetros."}
-          </p>
+    <div style={{minHeight:"100vh", background:"#080c14", color:"#e2e8f0"}}>
+      <div style={{borderBottom:"1px solid #1e293b", padding:"24px", textAlign:"center"}}>
+        <div style={{display:"flex", justifyContent:"center", gap:8, marginBottom:16}}>
+          {["pipeline", "hpc"].map(v=>(
+            <button key={v} onClick={()=>setView(v)} style={{
+              padding:"6px 14px", background:view===v?"#1e293b":"none", border:"1px solid #1e293b",
+              color:view===v?"#fff":"#475569", borderRadius:6, cursor:"pointer", fontWeight:600
+            }}>{v==="pipeline"?"Básico":"Expert"}</button>
+          ))}
         </div>
+        <h1 style={{fontSize:24}}>{view==="pipeline"?"Guia de IA":"Engenharia HPC"}</h1>
       </div>
-
-      <div style={{maxWidth:900,margin:"0 auto",padding:"32px 16px"}}>
-        {!isLoaded ? (
-            <div style={{textAlign:"center", padding: 40, color: "#475569"}}>Carregando arquitetura...</div>
-        ) : (
-            view === "pipeline" ? (
-              <PipelineView steps={steps} llmExtra={llmExtra} />
-            ) : (
-              <window.HPCGuide />
-            )
-        )}
-
-        <div style={{marginTop:30,padding:"16px 20px",background:"#0d1117",border:"1px solid #1e293b",borderRadius:12,fontSize:12,color:"#475569",fontFamily:"system-ui,sans-serif",textAlign:"center"}}>
-          {view === "pipeline"
-            ? <span>Dica: Clique em cada etapa acima para ver o <strong style={{color:"#64748b"}}>código Python</strong> correspondente.</span>
-            : "Você está no modo Especialista. Explore os pilares da distribuição de carga e hardware de ponta."}
-        </div>
+      <div style={{maxWidth:850, margin:"0 auto", padding:16}}>
+        <Guide data={appData[view]} />
       </div>
     </div>
   );
